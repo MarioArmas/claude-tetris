@@ -25,8 +25,8 @@ Then open `http://localhost:8000`. There is no test suite; verify changes by pla
 
 All game logic lives in `game.js` as top-level functions and module-scope mutable state (`board`, `current`, `next`, `score`, `lines`, `level`, `paused`, `gameOver`, `dropInterval`, etc.) — there are no classes or modules.
 
-- **Board model**: `board` is a `ROWS × COLS` matrix; each cell is `0` (empty) or a color index `1–7` identifying which piece type locked there.
-- **Pieces**: `PIECES` defines the 7 tetrominoes as square matrices of color indices. Rotation (`rotateCW`) is a transpose + row-reverse, not a lookup table.
+- **Board model**: `board` is a `ROWS × COLS` matrix; each cell is `0` (empty) or a color index `1–8` identifying which piece type locked there.
+- **Pieces**: `PIECES` defines the 7 standard tetrominoes plus a special 3×3 "nut" piece (`N`, color index 8) with a `0` hole in its center, as square matrices of color indices. Because `collide`/`merge` only treat truthy cells as solid, the hole is inert board space — no special-casing needed elsewhere; a later piece can fall through it if the column lines up. Rotation (`rotateCW`) is a transpose + row-reverse, not a lookup table.
 - **Collision** (`collide`): checks board bounds and overlap against already-locked cells; used for movement, rotation, and ghost-piece projection.
 - **Wall kicks** (`tryRotate`): after rotating, tries horizontal offsets `[0, -1, 1, -2, 2]` in order and takes the first that doesn't collide.
 - **Game loop** (`loop`): driven by `requestAnimationFrame`; accumulates elapsed time in `dropAccum` and drops the piece one row once `dropInterval` is exceeded, otherwise just redraws.
