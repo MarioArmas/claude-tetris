@@ -1,0 +1,39 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Issue Triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowedTools "Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh label create:*),Bash(gh label list:*)"'
+          prompt: |
+            Analiza el issue #${{ github.event.issue.number }} de este repositorio (Tetris en JavaScript vanilla, ver CLAUDE.md para arquitectura).
+
+            Pasos:
+            1. Lee el issue completo con `gh issue view ${{ github.event.issue.number }}`.
+            2. Determina qué labels le corresponden (tipo: bug/enhancement/question/documentation, y si aplica, área: rendering, input, scoring, rotation/collision, etc.). Si un label apropiado no existe aún en el repo, créalo con `gh label create` (elige un color razonable) y luego asígnalo con `gh issue edit --add-label`.
+            3. Investiga el código relevante en game.js/index.html/style.css para entender la causa probable o el alcance del pedido.
+            4. Publica UN comentario en el issue (`gh issue comment ${{ github.event.issue.number }} --body "..."`) con un diagnóstico general en español:
+               - Resumen del problema/petición
+               - Causa probable o área de la funcionalidad involucrada
+               - Archivos y funciones relevantes (con referencias tipo `game.js:123`)
+               - Enfoque sugerido para la solución (sin implementarla todavía)
+
+            No modifiques el código ni abras un PR. No edites el título/cuerpo del issue. Solo asigna labels y comenta el diagnóstico.
