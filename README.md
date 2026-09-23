@@ -40,6 +40,9 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Pieza fantasma** (_ghost piece_): muestra dónde aterrizará la pieza actual.
 - **Vista previa** de la siguiente pieza.
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
+- **Combos encadenados**: limpiar líneas con piezas consecutivas multiplica la puntuación (x2, x3, x4…).
+- **Bonus** por **T-spin**, **Back-to-Back** (Tetris o T-spins seguidos) y **Perfect Clear** (tablero vacío).
+- **Efectos visuales y sonoros** al encadenar: textos flotantes, destello, sacudida del tablero y sonidos sintetizados (se pueden silenciar desde el panel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
 
@@ -115,6 +118,7 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Game loop** (`loop`): basado en `requestAnimationFrame`, acumula el tiempo transcurrido y baja la pieza una fila cuando se supera `dropInterval`.
 - **Limpieza de líneas** (`clearLines`): recorre el tablero de abajo hacia arriba; cada fila completa se elimina y se inserta una vacía en la cima.
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
+- **Combos y bonus** (`scoreLock`): cada pieza que limpia líneas incrementa `combo`, que actúa como multiplicador (la primera limpieza es x1, la segunda x2…); una pieza que no limpia nada lo reinicia. Un **T-spin** se detecta con la regla de las 3 esquinas (pieza T, último movimiento = rotación y 3 de las 4 esquinas de su caja 3×3 ocupadas) y puntúa con `TSPIN_SCORES`. Un Tetris o T-spin seguido de otro aplica **B2B** (×1.5). Si el tablero queda vacío se suma el bonus de **Perfect Clear**. Fórmula: `base × nivel × (1.5 si B2B) × combo + PerfectClear × nivel`.
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
 
@@ -175,6 +179,9 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `BLOCK`        | Tamaño en píxeles de cada celda          | `30`                  |
 | `COLORS`       | Paleta de colores por tipo de pieza      | 8 colores             |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
+| `TSPIN_SCORES` | Puntos por T-spin con 0, 1, 2 o 3 líneas | `[400,800,1200,1600]` |
+| `PERFECT_CLEAR_SCORES` | Bonus por Perfect Clear según líneas | `[0,800,1200,1800,2000]` |
+| `B2B_MULTIPLIER` | Multiplicador Back-to-Back             | `1.5`                 |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
 
 > Si cambias `COLS`, `ROWS` o `BLOCK`, recuerda ajustar también `width` y `height` del `<canvas id="board">` en `index.html` para que coincida (`COLS × BLOCK` × `ROWS × BLOCK`).

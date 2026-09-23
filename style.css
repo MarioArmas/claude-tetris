@@ -27,6 +27,9 @@
   --switch-bg: #2a2a3a;
   --switch-knob: #e0e0e0;
   --hold-locked: #e57373;
+  --combo-color: #ffb74d;
+  --combo-glow: rgba(255, 183, 77, 0.45);
+  --flash-color: rgba(255, 255, 255, 0.35);
 }
 
 body.light-theme {
@@ -52,6 +55,9 @@ body.light-theme {
   --switch-bg: #c7c7d6;
   --switch-knob: #ffffff;
   --hold-locked: #d64545;
+  --combo-color: #e07b00;
+  --combo-glow: rgba(224, 123, 0, 0.35);
+  --flash-color: rgba(59, 91, 219, 0.18);
 }
 
 body {
@@ -279,4 +285,128 @@ kbd {
 
 #restart-btn:hover {
   background: var(--restart-hover);
+}
+
+/* ---- Combos y efectos ---- */
+.board-wrap {
+  position: relative;
+  --shake: 4px;
+}
+
+#board {
+  transition: box-shadow 0.25s, border-color 0.25s;
+}
+
+.board-wrap.combo-active #board {
+  border-color: var(--combo-color);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.6), 0 0 24px var(--combo-glow);
+}
+
+#combo-section.active #combo {
+  color: var(--combo-color);
+  animation: combo-pulse 0.3s ease-out;
+}
+
+.b2b-status {
+  min-height: 14px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  color: #4dd0e1;
+}
+
+@keyframes combo-pulse {
+  0%   { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
+/* Destello al limpiar líneas */
+.board-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.board-wrap.flash::after {
+  background: var(--flash-color);
+  animation: flash 0.35s ease-out forwards;
+}
+
+.board-wrap.flash-perfect::after {
+  background: linear-gradient(135deg, #4dd0e1, #ba68c8, #ffd54f, #81c784);
+  animation: flash 1s ease-out forwards;
+}
+
+@keyframes flash {
+  0%   { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+/* Sacudida del tablero (intensidad en --shake, definida desde game.js) */
+.board-wrap.shake {
+  animation: shake 0.35s ease-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(calc(var(--shake) * -1), calc(var(--shake) * 0.5)); }
+  40% { transform: translate(var(--shake), calc(var(--shake) * -0.5)); }
+  60% { transform: translate(calc(var(--shake) * -0.6), 0); }
+  80% { transform: translate(calc(var(--shake) * 0.3), 0); }
+}
+
+/* Textos flotantes (COMBO x3, T-SPIN, PERFECT CLEAR...) */
+.fx-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.fx-popup {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 35%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--text);
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-shadow: 0 0 12px rgba(0, 0, 0, 0.8);
+  animation: fx-pop 1.3s ease-out forwards;
+}
+
+.fx-main   { font-size: 26px; }
+.fx-sub    { font-size: 14px; }
+.fx-points {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  color: var(--value-color);
+}
+
+.fx-combo  .fx-main, .fx-combo  .fx-sub { color: var(--combo-color); }
+.fx-tetris .fx-main { color: #4dd0e1; }
+.fx-tspin  .fx-main { color: #ba68c8; }
+.fx-perfect .fx-main {
+  font-size: 30px;
+  background: linear-gradient(90deg, #4dd0e1, #ba68c8, #ffd54f, #81c784);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+
+@keyframes fx-pop {
+  0%   { opacity: 0; transform: scale(0.5); }
+  15%  { opacity: 1; transform: scale(1.15); }
+  30%  { transform: scale(1); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-60px); }
 }

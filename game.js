@@ -29,6 +29,11 @@ const PIECES = [
 ];
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
+const TSPIN_SCORES = [400, 800, 1200, 1600];          // T-spin con 0, 1, 2 o 3 líneas
+const PERFECT_CLEAR_SCORES = [0, 800, 1200, 1800, 2000];
+const B2B_MULTIPLIER = 1.5;
+const CLEAR_NAMES = ['', 'SINGLE', 'DOUBLE', 'TRIPLE', 'TETRIS'];
+const T_TYPE = 3;
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
@@ -46,10 +51,22 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
+const soundToggle = document.getElementById('sound-toggle');
+const boardWrap = document.getElementById('board-wrap');
+const fxLayer = document.getElementById('fx-layer');
+const comboSection = document.getElementById('combo-section');
+const comboEl = document.getElementById('combo');
+const b2bEl = document.getElementById('b2b-status');
 
 const THEME_KEY = 'tetris-theme';
+const SOUND_KEY = 'tetris-sound';
 
 let board, current, next, hold, holdLocked, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+// combo: piezas consecutivas que limpiaron líneas. b2b: la última limpieza fue "difícil" (Tetris o T-spin).
+// lastRotate: el último movimiento exitoso de la pieza fue una rotación (requisito del T-spin).
+let combo, b2b, lastRotate;
+let soundOn = localStorage.getItem(SOUND_KEY) !== 'off';
+let audioCtx = null;
 
 function applyTheme(theme) {
   document.body.classList.toggle('light-theme', theme === 'light');
@@ -66,6 +83,12 @@ themeToggle.addEventListener('change', () => {
   applyTheme(theme);
   localStorage.setItem(THEME_KEY, theme);
   draw();
+});
+
+soundToggle.checked = soundOn;
+soundToggle.addEventListener('change', () => {
+  soundOn = soundToggle.checked;
+  localStorage.setItem(SOUND_KEY, soundOn ? 'on' : 'off');
 });
 
 function createBoard() {
@@ -110,6 +133,7 @@ function tryRotate() {
     if (!collide(rotated, current.x + kick, current.y)) {
       current.shape = rotated;
       current.x += kick;
+      lastRotate = true;
       return;
     }
   }
@@ -132,13 +156,84 @@ function clearLines() {
       r++;
     }
   }
-  if (cleared) {
-    lines += cleared;
-    score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
-    updateHUD();
+  return cleared;
+}
+
+// T-spin (regla de las 3 esquinas): la pieza T se asentó justo después de rotar
+// y al menos 3 de las 4 esquinas de su caja 3×3 están ocupadas (o fuera del tablero).
+// Se evalúa antes de merge(), con la pieza aún sin fijar.
+function isTSpin() {
+  if (current.type !== T_TYPE || !lastRotate) return false;
+  const corners = [[0, 0], [0, 2], [2, 0], [2, 2]];
+  let filled = 0;
+  for (const [r, c] of corners) {
+    const x = current.x + c, y = current.y + r;
+    if (x < 0 || x >= COLS || y >= ROWS || (y >= 0 && board[y][x])) filled++;
   }
+  return filled >= 3;
+}
+
+function isBoardEmpty() {
+  return board.every(row => row.every(v => v === 0));
+}
+
+// Puntuación de una pieza asentada:
+// base (líneas o T-spin) × nivel → ×1.5 si es B2B → × multiplicador de combo → + bonus Perfect Clear.
+function scoreLock(cleared, tspin) {
+  if (!cleared) {
+    combo = 0;
+    if (tspin) {
+      // Un T-spin sin líneas puntúa pero no rompe (ni inicia) la cadena B2B.
+      const pts = TSPIN_SCORES[0] * level;
+      score += pts;
+      showFx(['T-SPIN'], `+${pts.toLocaleString()}`, 'fx-tspin');
+      playSound('tspin');
+    }
+    return;
+  }
+
+  combo++;
+  const difficult = tspin || cleared === 4;
+  const isB2B = difficult && b2b;
+  b2b = difficult;
+
+  let base = (tspin ? TSPIN_SCORES[cleared] : LINE_SCORES[cleared]) * level;
+  if (isB2B) base = Math.floor(base * B2B_MULTIPLIER);
+  let pts = base * combo;
+
+  const perfect = isBoardEmpty();
+  if (perfect) pts += PERFECT_CLEAR_SCORES[cleared] * level;
+
+  score += pts;
+  lines += cleared;
+  level = Math.floor(lines / 10) + 1;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+
+  // ---- Efectos ----
+  const labels = [];
+  if (perfect) labels.push('PERFECT CLEAR!');
+  if (tspin) labels.push(`T-SPIN ${CLEAR_NAMES[cleared]}`);
+  else if (cleared === 4) labels.push('TETRIS');
+  if (isB2B) labels.push('BACK-TO-BACK');
+  if (combo >= 2) labels.push(`COMBO x${combo}`);
+
+  const variant = perfect ? 'fx-perfect'
+    : tspin ? 'fx-tspin'
+    : cleared === 4 ? 'fx-tetris'
+    : combo >= 2 ? 'fx-combo'
+    : '';
+
+  if (labels.length) showFx(labels, `+${pts.toLocaleString()}`, variant);
+  retrigger(boardWrap, perfect ? 'flash-perfect' : 'flash');
+  if (perfect || difficult || combo >= 2) {
+    const intensity = Math.min(2 + combo + (difficult ? 2 : 0) + (perfect ? 4 : 0), 12);
+    boardWrap.style.setProperty('--shake', `${intensity}px`);
+    retrigger(boardWrap, 'shake');
+  }
+
+  playSound('clear', cleared);
+  if (difficult) playSound(isB2B ? 'b2b' : 'special');
+  if (perfect) playSound('perfect');
 }
 
 function ghostY() {
@@ -149,6 +244,7 @@ function ghostY() {
 
 function hardDrop() {
   const gy = ghostY();
+  if (gy > current.y) lastRotate = false;
   score += (gy - current.y) * 2;
   current.y = gy;
   lockPiece();
@@ -157,6 +253,7 @@ function hardDrop() {
 function softDrop() {
   if (!collide(current.shape, current.x, current.y + 1)) {
     current.y++;
+    lastRotate = false;
     score += 1;
     updateHUD();
   } else {
@@ -165,8 +262,10 @@ function softDrop() {
 }
 
 function lockPiece() {
+  const tspin = isTSpin();
   merge();
-  clearLines();
+  scoreLock(clearLines(), tspin);
+  updateHUD();
   holdLocked = false;
   spawn();
   drawHold();
@@ -175,6 +274,7 @@ function lockPiece() {
 function spawn() {
   current = next;
   next = randomPiece();
+  lastRotate = false;
   if (collide(current.shape, current.x, current.y)) {
     endGame();
   }
@@ -188,6 +288,7 @@ function holdPiece() {
   const heldType = current.type;
   if (hold) {
     current = createPiece(hold.type);
+    lastRotate = false;
     if (collide(current.shape, current.x, current.y)) endGame();
   } else {
     spawn();
@@ -202,6 +303,93 @@ function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+  comboEl.textContent = combo >= 2 ? `x${combo}` : '—';
+  comboSection.classList.toggle('active', combo >= 2);
+  boardWrap.classList.toggle('combo-active', combo >= 2);
+  b2bEl.textContent = b2b ? 'B2B' : '';
+}
+
+// ---- Efectos visuales ----
+
+// Reinicia una animación CSS aunque la clase ya esté aplicada.
+function retrigger(el, cls) {
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+}
+
+function showFx(labels, points, variant) {
+  fxLayer.replaceChildren();
+  const popup = document.createElement('div');
+  popup.className = `fx-popup ${variant}`;
+  labels.forEach((text, i) => {
+    const span = document.createElement('span');
+    span.className = i === 0 ? 'fx-main' : 'fx-sub';
+    span.textContent = text;
+    popup.appendChild(span);
+  });
+  const pts = document.createElement('span');
+  pts.className = 'fx-points';
+  pts.textContent = points;
+  popup.appendChild(pts);
+  popup.addEventListener('animationend', () => popup.remove());
+  fxLayer.appendChild(popup);
+}
+
+// ---- Sonido (Web Audio sintetizado, sin archivos externos) ----
+
+// El navegador solo deja arrancar el AudioContext tras un gesto del usuario,
+// por eso se crea/reanuda desde el listener de teclado.
+function unlockAudio() {
+  if (!soundOn) return;
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    audioCtx = new AC();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function tone(freq, start, dur, type = 'square', vol = 0.06) {
+  const t = audioCtx.currentTime + start;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t);
+  gain.gain.setValueAtTime(vol, t);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t);
+  osc.stop(t + dur);
+}
+
+function playSound(kind, cleared = 1) {
+  if (!soundOn || !audioCtx || audioCtx.state !== 'running') return;
+  // Cada eslabón del combo sube un semitono (hasta una octava).
+  const root = 440 * Math.pow(2, Math.min(Math.max(combo - 1, 0), 12) / 12);
+  switch (kind) {
+    case 'clear': {
+      const steps = [1, 1.25, 1.5, 2];
+      for (let i = 0; i < cleared; i++) tone(root * steps[i], i * 0.06, 0.15);
+      break;
+    }
+    case 'tspin':
+      tone(330, 0, 0.1, 'triangle', 0.1);
+      tone(495, 0.08, 0.2, 'triangle', 0.1);
+      break;
+    case 'special':
+      tone(root / 2, 0.05, 0.4, 'sawtooth', 0.05);
+      tone(root * 0.75, 0.05, 0.4, 'triangle', 0.08);
+      break;
+    case 'b2b':
+      tone(root / 2, 0.05, 0.5, 'sawtooth', 0.05);
+      tone(root * 1.5, 0.25, 0.3, 'square', 0.05);
+      tone(root * 2, 0.35, 0.4, 'square', 0.05);
+      break;
+    case 'perfect':
+      [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) => tone(f, 0.3 + i * 0.07, 0.35, 'triangle', 0.08));
+      break;
+  }
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -307,6 +495,7 @@ function loop(ts) {
     dropAccum = 0;
     if (!collide(current.shape, current.x, current.y + 1)) {
       current.y++;
+      lastRotate = false;
     } else {
       lockPiece();
     }
@@ -328,6 +517,11 @@ function init() {
   lastTime = performance.now();
   hold = null;
   holdLocked = false;
+  combo = 0;
+  b2b = false;
+  lastRotate = false;
+  fxLayer.replaceChildren();
+  boardWrap.classList.remove('flash', 'flash-perfect', 'shake');
   next = randomPiece();
   spawn();
   drawHold();
@@ -338,14 +532,15 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  unlockAudio();
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
-      if (!collide(current.shape, current.x - 1, current.y)) current.x--;
+      if (!collide(current.shape, current.x - 1, current.y)) { current.x--; lastRotate = false; }
       break;
     case 'ArrowRight':
-      if (!collide(current.shape, current.x + 1, current.y)) current.x++;
+      if (!collide(current.shape, current.x + 1, current.y)) { current.x++; lastRotate = false; }
       break;
     case 'ArrowDown':
       softDrop();
