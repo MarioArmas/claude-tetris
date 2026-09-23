@@ -26,6 +26,7 @@
   --grid-line: #22222e;
   --switch-bg: #2a2a3a;
   --switch-knob: #e0e0e0;
+  --hold-locked: #e57373;
 }
 
 body.light-theme {
@@ -50,6 +51,7 @@ body.light-theme {
   --grid-line: #d8d8e6;
   --switch-bg: #c7c7d6;
   --switch-knob: #ffffff;
+  --hold-locked: #d64545;
 }
 
 body {
@@ -122,11 +124,34 @@ body {
   letter-spacing: 1px;
 }
 
-#next-canvas {
+#next-canvas,
+#hold-canvas {
   display: block;
   border: 1px solid var(--board-border);
   background: var(--board-bg);
   border-radius: 4px;
+}
+
+/* ---- Hold ---- */
+.hold-panel {
+  width: 120px;
+}
+
+#hold-canvas {
+  transition: border-color 0.15s, opacity 0.15s;
+}
+
+#hold-section.locked #hold-canvas {
+  border-color: var(--hold-locked);
+  border-style: dashed;
+}
+
+.hold-status {
+  min-height: 14px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  color: var(--hold-locked);
 }
 
 /* ---- Toggle de tema ---- */

@@ -34,6 +34,10 @@ const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
 const nextCtx = nextCanvas.getContext('2d');
+const holdCanvas = document.getElementById('hold-canvas');
+const holdCtx = holdCanvas.getContext('2d');
+const holdSection = document.getElementById('hold-section');
+const holdStatus = document.getElementById('hold-status');
 const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
@@ -45,7 +49,7 @@ const themeToggle = document.getElementById('theme-toggle');
 
 const THEME_KEY = 'tetris-theme';
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, next, hold, holdLocked, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
 function applyTheme(theme) {
   document.body.classList.toggle('light-theme', theme === 'light');
@@ -68,10 +72,13 @@ function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
 
-function randomPiece() {
-  const type = Math.floor(Math.random() * 8) + 1;
+function createPiece(type) {
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
+}
+
+function randomPiece() {
+  return createPiece(Math.floor(Math.random() * 8) + 1);
 }
 
 function collide(shape, ox, oy) {
@@ -160,7 +167,9 @@ function softDrop() {
 function lockPiece() {
   merge();
   clearLines();
+  holdLocked = false;
   spawn();
+  drawHold();
 }
 
 function spawn() {
@@ -170,6 +179,23 @@ function spawn() {
     endGame();
   }
   drawNext();
+}
+
+// Guarda la pieza actual en reserva (o la intercambia con la reservada).
+// Solo se permite una vez por pieza: se desbloquea al asentarse la pieza.
+function holdPiece() {
+  if (holdLocked) return;
+  const heldType = current.type;
+  if (hold) {
+    current = createPiece(hold.type);
+    if (collide(current.shape, current.x, current.y)) endGame();
+  } else {
+    spawn();
+  }
+  hold = createPiece(heldType);
+  holdLocked = true;
+  dropAccum = 0;
+  drawHold();
 }
 
 function updateHUD() {
@@ -229,15 +255,26 @@ function draw() {
       drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
 }
 
-function drawNext() {
+function drawPreview(context, piece, alpha) {
   const NB = 30;
-  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-  const shape = next.shape;
+  context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+  if (!piece) return;
+  const shape = piece.shape;
   const offX = Math.floor((4 - shape[0].length) / 2);
   const offY = Math.floor((4 - shape.length) / 2);
   for (let r = 0; r < shape.length; r++)
     for (let c = 0; c < shape[r].length; c++)
-      drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
+      drawBlock(context, offX + c, offY + r, shape[r][c], NB, alpha);
+}
+
+function drawNext() {
+  drawPreview(nextCtx, next);
+}
+
+function drawHold() {
+  drawPreview(holdCtx, hold, holdLocked ? 0.3 : 1);
+  holdSection.classList.toggle('locked', holdLocked);
+  holdStatus.textContent = holdLocked ? 'BLOQUEADO' : '';
 }
 
 function endGame() {
@@ -289,8 +326,11 @@ function init() {
   dropInterval = 1000;
   dropAccum = 0;
   lastTime = performance.now();
+  hold = null;
+  holdLocked = false;
   next = randomPiece();
   spawn();
+  drawHold();
   updateHUD();
   overlay.classList.add('hidden');
   cancelAnimationFrame(animId);
@@ -317,6 +357,11 @@ document.addEventListener('keydown', e => {
     case 'Space':
       e.preventDefault();
       hardDrop();
+      break;
+    case 'KeyC':
+    case 'ShiftLeft':
+    case 'ShiftRight':
+      holdPiece();
       break;
   }
   updateHUD();
