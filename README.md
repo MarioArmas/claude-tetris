@@ -23,6 +23,7 @@ Implementación del clásico **Tetris** en JavaScript vanilla, usando HTML5 Canv
     - [3. `game.js`](#3-gamejs)
     - [Flujo del juego](#flujo-del-juego)
     - [Menú de pausa](#menú-de-pausa)
+  - [Tabla de récords](#tabla-de-récords)
   - [Tecnologías](#tecnologías)
   - [Estructura del proyecto](#estructura-del-proyecto)
   - [Personalización](#personalización)
@@ -47,6 +48,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Menú de pausa** (`P` o `Esc`) con opciones para reanudar, reiniciar, ver los controles y elegir el nivel inicial.
 - **Game Over** con opción de reinicio.
+- **Tabla de récords local**: Top 5 con nombre del jugador, mejor combo y líneas máximas, guardada en el navegador.
 
 ---
 
@@ -104,7 +106,8 @@ Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
-- Un overlay para el estado **GAME OVER** y otro, `#pause-menu`, para el menú de pausa.
+- Un overlay para el estado **GAME OVER** (con la tabla de récords) y otro, `#pause-menu`, para el menú de pausa.
+- Una **pantalla de inicio** (`#start-screen`) con el Top 5 y el botón **Jugar**.
 
 ### 2. `style.css`
 
@@ -128,6 +131,8 @@ Contiene toda la lógica del juego. A grandes rasgos:
 ### Flujo del juego
 
 ```
+carga de la página → pantalla de inicio (récords) → Jugar / Enter → startGame()
+
 init()
   ├─ createBoard()                  → matriz vacía
   ├─ next = randomPiece()
@@ -155,6 +160,19 @@ Al pulsar `P` o `Esc` el juego se detiene y aparece un menú con:
 - **Nivel inicial**: selector del 1 al 15 con el nivel con el que empezará la próxima partida. Se guarda en `localStorage` (clave `tetris-start-level`).
 
 El menú se maneja con el ratón o con el teclado (`↑`/`↓` para moverse, `Enter` o `Espacio` para activar y `←`/`→` para cambiar el nivel inicial). Mientras está abierto, ninguna tecla llega al juego; al reanudar se descarta el tiempo de caída acumulado y se ignoran las teclas de juego durante 150 ms para evitar movimientos accidentales.
+
+---
+
+## Tabla de récords
+
+Las mejores partidas se guardan en `localStorage` (clave `tetris-records`), así que persisten entre sesiones en el mismo navegador:
+
+- **Top 5** puntuaciones con nombre, puntos, líneas, combo máximo y nivel alcanzado (pasa el ratón por una fila para ver la fecha).
+- **Marcas históricas**: el **mejor combo** y el **máximo de líneas** en una partida. Se actualizan en cada Game Over, aunque la puntuación no entre al Top 5.
+- La tabla aparece en la **pantalla de inicio** (al cargar la página; se empieza con **Jugar** o `Enter`) y en el overlay de **Game Over**.
+- Si la puntuación entra al Top 5, el Game Over pide el **nombre del jugador** (máx. 12 caracteres; recuerda el último usado en `tetris-player-name`). Se guarda con **Guardar** o `Enter`; la fila de la partida queda resaltada y, si es la mejor de todas, aparece **¡NUEVO RÉCORD!**.
+- El botón **Borrar récords** (con confirmación) vacía la tabla y las marcas históricas.
+- Si los datos guardados faltan o están corruptos, el juego simplemente empieza con la tabla vacía.
 
 ---
 

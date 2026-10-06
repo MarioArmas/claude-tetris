@@ -81,6 +81,22 @@
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+
+        <!-- Récords: solo visibles en game over (se ocultan en pausa) -->
+        <div id="gameover-records" class="records-panel hidden">
+          <p id="new-record-badge" class="new-record-badge hidden">¡NUEVO RÉCORD!</p>
+          <form id="name-form" class="name-form hidden" autocomplete="off">
+            <label for="name-input" class="label">¡ENTRASTE AL TOP 5! TU NOMBRE</label>
+            <div class="name-row">
+              <input type="text" id="name-input" maxlength="12" spellcheck="false" />
+              <button type="submit" class="btn-primary">Guardar</button>
+            </div>
+          </form>
+          <table class="records-table" id="gameover-records-table"></table>
+          <p class="records-stats" id="gameover-records-stats"></p>
+          <button type="button" class="btn-secondary clear-records-btn">Borrar récords</button>
+        </div>
+
         <button id="restart-btn">Reiniciar</button>
       </div>
     </div>
@@ -110,6 +126,20 @@
           </div>
           <span class="level-hint">Se aplica al reiniciar</span>
         </div>
+      </div>
+    </div>
+
+    <div id="start-screen" class="overlay start-screen">
+      <div class="overlay-box">
+        <p class="start-title">TETRIS</p>
+        <div class="records-panel">
+          <span class="label">MEJORES PUNTUACIONES</span>
+          <table class="records-table" id="start-records-table"></table>
+          <p class="records-stats" id="start-records-stats"></p>
+        </div>
+        <button type="button" id="play-btn" class="btn-primary">Jugar</button>
+        <span class="start-hint">o pulsa <kbd>Enter</kbd></span>
+        <button type="button" class="btn-secondary clear-records-btn">Borrar récords</button>
       </div>
     </div>
   </div>
