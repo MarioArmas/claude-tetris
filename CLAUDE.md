@@ -35,8 +35,9 @@ All game logic lives in `game.js` as top-level functions and module-scope mutabl
 - **Effects**: `showFx` (floating text in `#fx-layer` over the board), `retrigger` (restart CSS `flash`/`shake` animations on `#board-wrap`), and `playSound` (Web Audio synthesized tones; `AudioContext` is created in `unlockAudio` from the keydown listener due to autoplay policy).
 - **Ghost piece** (`ghostY`): projects the current piece straight down until it would collide, drawn at low alpha in `draw()`.
 - **Rendering**: `draw()` redraws the whole canvas every frame (grid, locked board, ghost, current piece); `drawNext()` renders the next-piece preview canvas.
-- **Input**: a single `keydown` listener dispatches on `e.code` for movement/rotation/soft-drop/hard-drop; `KeyP` toggles pause independently of the `paused`/`gameOver` guard that blocks other input.
-- **Lifecycle**: `init()` resets all state and starts the loop; `spawn()` promotes `next` to `current` and generates a new `next`, calling `endGame()` if the newly spawned piece immediately collides.
+- **Input**: a single `keydown` listener dispatches on `e.code` for movement/rotation/soft-drop/hard-drop. `KeyP`/`Escape` call `togglePause()` before any other guard; while the pause menu is open every other key goes to `handlePauseMenuKey` (↑/↓ and Tab move focus, trapped in the menu; Enter/Space activate; ←/→ adjust start level) and never reaches the game. After resuming, game keys are ignored until `inputBlockedUntil` (`RESUME_INPUT_DELAY` ms).
+- **Pause menu** (`// ---- Menú de pausa ----` section): `togglePause()` opens/closes the `#pause-menu` overlay (`#overlay` is only for game over). `closePauseMenu()` resets `dropAccum`, blurs the focused menu button and arms the input block; `init()` also calls it so "Reiniciar" works from the menu. The start-level preference (1–15) is `startLevel` / localStorage `START_LEVEL_KEY`; `init()` copies it to `gameStartLevel`, which `scoreLock` uses, so changing it mid-game only affects the next game.
+- **Lifecycle**: `init()` resets all state (level = `startLevel`, `dropInterval = dropIntervalFor(level)`) and starts the loop; level during play is `gameStartLevel + floor(lines / 10)`; `spawn()` promotes `next` to `current` and generates a new `next`, calling `endGame()` if the newly spawned piece immediately collides.
 
 ### Tunable constants (top of `game.js`)
 

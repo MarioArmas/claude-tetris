@@ -60,6 +60,7 @@ const b2bEl = document.getElementById('b2b-status');
 
 const THEME_KEY = 'tetris-theme';
 const SOUND_KEY = 'tetris-sound';
+const START_LEVEL_KEY = 'tetris-start-level';
 
 let board, current, next, hold, holdLocked, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 // combo: piezas consecutivas que limpiaron líneas. b2b: la última limpieza fue "difícil" (Tetris o T-spin).
@@ -206,8 +207,8 @@ function scoreLock(cleared, tspin) {
 
   score += pts;
   lines += cleared;
-  level = Math.floor(lines / 10) + 1;
-  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+  level = gameStartLevel + Math.floor(lines / 10);
+  dropInterval = dropIntervalFor(level);
 
   // ---- Efectos ----
   const labels = [];
@@ -477,13 +478,12 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    closePauseMenu();
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    openPauseMenu();
   }
 }
 
@@ -509,10 +509,11 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  gameStartLevel = startLevel;
+  level = gameStartLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = dropIntervalFor(level);
   dropAccum = 0;
   lastTime = performance.now();
   hold = null;
@@ -527,14 +528,155 @@ function init() {
   drawHold();
   updateHUD();
   overlay.classList.add('hidden');
+  closePauseMenu();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
+// ---- Menú de pausa ----
+
+const MIN_START_LEVEL = 1;
+const MAX_START_LEVEL = 15;
+const RESUME_INPUT_DELAY = 150; // ms en que se ignoran las teclas de juego tras cerrar el menú
+
+const pauseMenu = document.getElementById('pause-menu');
+const pmResume = document.getElementById('pm-resume');
+const pmRestart = document.getElementById('pm-restart');
+const pmControlsBtn = document.getElementById('pm-controls');
+const pmControlsList = document.getElementById('pm-controls-list');
+const pmLevel = document.getElementById('pm-level');
+const pmLevelValue = document.getElementById('pm-level-value');
+const pmLevelDown = document.getElementById('pm-level-down');
+const pmLevelUp = document.getElementById('pm-level-up');
+// Elementos navegables con ↑/↓ dentro del menú, en orden.
+const pmItems = [pmResume, pmRestart, pmControlsBtn, pmLevel];
+
+// startLevel: preferencia del selector (aplica a la próxima partida).
+// gameStartLevel: nivel con el que empezó la partida en curso.
+let startLevel = loadStartLevel();
+let gameStartLevel = startLevel;
+let inputBlockedUntil = 0;
+
+// Velocidad de caída (ms por fila) para un nivel dado.
+function dropIntervalFor(lvl) {
+  return Math.max(100, 1000 - (lvl - 1) * 90);
+}
+
+function loadStartLevel() {
+  const n = parseInt(localStorage.getItem(START_LEVEL_KEY), 10);
+  return Number.isFinite(n) ? Math.min(MAX_START_LEVEL, Math.max(MIN_START_LEVEL, n)) : MIN_START_LEVEL;
+}
+
+function setStartLevel(n) {
+  startLevel = Math.min(MAX_START_LEVEL, Math.max(MIN_START_LEVEL, n));
+  localStorage.setItem(START_LEVEL_KEY, String(startLevel));
+  renderStartLevel();
+}
+
+function renderStartLevel() {
+  pmLevelValue.textContent = startLevel;
+  pmLevel.setAttribute('aria-valuenow', startLevel);
+  pmLevelDown.disabled = startLevel <= MIN_START_LEVEL;
+  pmLevelUp.disabled = startLevel >= MAX_START_LEVEL;
+}
+
+function isPauseMenuOpen() {
+  return !pauseMenu.classList.contains('hidden');
+}
+
+function openPauseMenu() {
+  renderStartLevel();
+  setControlsExpanded(false);
+  pauseMenu.classList.remove('hidden');
+  pmResume.focus();
+}
+
+// Oculta el menú y evita "rebotes" al volver: se descarta el tiempo acumulado
+// de caída, se quita el foco del botón (para que Space/Enter no lo reactiven)
+// y se ignoran las teclas de juego durante RESUME_INPUT_DELAY ms.
+function closePauseMenu() {
+  const wasOpen = isPauseMenuOpen();
+  pauseMenu.classList.add('hidden');
+  if (pauseMenu.contains(document.activeElement)) document.activeElement.blur();
+  dropAccum = 0;
+  if (wasOpen) inputBlockedUntil = performance.now() + RESUME_INPUT_DELAY;
+}
+
+function setControlsExpanded(expanded) {
+  pmControlsList.classList.toggle('hidden', !expanded);
+  pmControlsBtn.setAttribute('aria-expanded', String(expanded));
+  pmControlsBtn.textContent = expanded ? 'Ocultar controles' : 'Ver controles';
+}
+
+function focusMenuItem(dir) {
+  const idx = pmItems.findIndex(el => el.contains(document.activeElement));
+  const nextIdx = idx === -1
+    ? (dir > 0 ? 0 : pmItems.length - 1)
+    : (idx + dir + pmItems.length) % pmItems.length;
+  pmItems[nextIdx].focus();
+}
+
+// Teclado dentro del menú abierto. Ninguna tecla llega al juego; las que usa
+// el menú se cancelan (sin scroll ni activación nativa) y el resto (F5, Ctrl+R…)
+// se deja pasar al navegador.
+function handlePauseMenuKey(e) {
+  const onLevel = pmLevel.contains(document.activeElement);
+  switch (e.code) {
+    case 'ArrowUp':
+      e.preventDefault();
+      focusMenuItem(-1);
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      focusMenuItem(1);
+      break;
+    case 'ArrowLeft':
+    case 'ArrowRight':
+      e.preventDefault();
+      if (onLevel) setStartLevel(startLevel + (e.code === 'ArrowRight' ? 1 : -1));
+      break;
+    case 'Enter':
+    case 'NumpadEnter':
+    case 'Space':
+      e.preventDefault();
+      if (e.repeat) break;
+      if (onLevel) break;
+      if (pmItems.includes(document.activeElement)) document.activeElement.click();
+      break;
+    case 'Tab':
+      // El foco se mantiene dentro del menú (diálogo modal).
+      e.preventDefault();
+      focusMenuItem(e.shiftKey ? -1 : 1);
+      break;
+  }
+}
+
+pmResume.addEventListener('click', () => { if (paused) togglePause(); });
+pmRestart.addEventListener('click', init);
+pmControlsBtn.addEventListener('click', () => {
+  setControlsExpanded(pmControlsList.classList.contains('hidden'));
+});
+// Tras el clic se devuelve el foco al selector: si el botón queda deshabilitado
+// (nivel 1 o 15) perdería el foco y ←/→ dejarían de funcionar.
+pmLevelDown.addEventListener('click', () => { setStartLevel(startLevel - 1); pmLevel.focus(); });
+pmLevelUp.addEventListener('click', () => { setStartLevel(startLevel + 1); pmLevel.focus(); });
+
+renderStartLevel();
+
 document.addEventListener('keydown', e => {
   unlockAudio();
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    e.preventDefault();
+    if (!e.repeat) togglePause();
+    return;
+  }
+  if (isPauseMenuOpen()) { handlePauseMenuKey(e); return; }
   if (paused || gameOver) return;
+  // Justo después de reanudar se ignoran las teclas para evitar movimientos accidentales.
+  if (performance.now() < inputBlockedUntil) {
+    if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
+    return;
+  }
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) { current.x--; lastRotate = false; }
