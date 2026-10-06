@@ -43,6 +43,10 @@
   --input-border: #3a3a5a;
   --btn-secondary-text: #e57373;
   --btn-secondary-border: rgba(229, 115, 115, 0.5);
+  --select-bg: #22223a;
+  --select-border: #3a3a5a;
+  --select-text: #e0e0e0;
+  --select-focus: #7aa2f7;
 }
 
 body.light-theme {
@@ -84,6 +88,25 @@ body.light-theme {
   --input-border: #c7c7d6;
   --btn-secondary-text: #d64545;
   --btn-secondary-border: rgba(214, 69, 69, 0.45);
+  --select-bg: #ffffff;
+  --select-border: #c7c7d6;
+  --select-text: #24242e;
+  --select-focus: #3b5bdb;
+}
+
+/* ---- Skins ----
+   Neon fuerza un tablero negro también en modo claro: doble clase para ganar
+   en especificidad a body.light-theme sin depender del orden de las reglas. */
+body.skin-neon,
+body.skin-neon.light-theme {
+  --board-bg: #000000;
+  --grid-line: #0b1a24;
+  --board-border: #00b8d4;
+}
+
+body.skin-pastel.light-theme {
+  --board-bg: #fbf8ff;
+  --grid-line: #ece6f5;
 }
 
 body {
@@ -230,6 +253,26 @@ body {
 
 .switch input:checked + .slider::before {
   transform: translateX(18px);
+}
+
+/* ---- Selector de skin ---- */
+#skin-select {
+  width: 100%;
+  background: var(--select-bg);
+  color: var(--select-text);
+  border: 1px solid var(--select-border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+#skin-select:hover,
+#skin-select:focus {
+  border-color: var(--select-focus);
+  outline: none;
 }
 
 /* ---- Controles ---- */
