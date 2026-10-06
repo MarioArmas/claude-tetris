@@ -34,13 +34,14 @@ All game logic lives in `game.js` as top-level functions and module-scope mutabl
 - **Combos/bonus** (`scoreLock`, called from `lockPiece` with the result of `clearLines` and `isTSpin`): `combo` counts consecutive line-clearing locks and multiplies the base score; a non-clearing lock resets it. `isTSpin` uses the 3-corner rule and must run *before* `merge()`; it relies on `lastRotate`, which `tryRotate` sets and every successful move/drop/spawn/hold clears — keep that invariant when adding new movement. `b2b` tracks whether the last clear was a Tetris or T-spin (×`B2B_MULTIPLIER`). Perfect Clear adds `PERFECT_CLEAR_SCORES`.
 - **Effects**: `showFx` (floating text in `#fx-layer` over the board), `retrigger` (restart CSS `flash`/`shake` animations on `#board-wrap`), and `playSound` (Web Audio synthesized tones; `AudioContext` is created in `unlockAudio` from the keydown listener due to autoplay policy).
 - **Ghost piece** (`ghostY`): projects the current piece straight down until it would collide, drawn at low alpha in `draw()`.
-- **Rendering**: `draw()` redraws the whole canvas every frame (grid, locked board, ghost, current piece); `drawNext()` renders the next-piece preview canvas.
+- **Rendering**: `draw()` redraws the whole canvas every frame (grid, locked board, ghost, current piece); `drawNext()`/`drawHold()` render the preview canvases via `drawPreview`. All blocks go through `drawBlock(context, x, y, colorIndex, size, alpha)`, which dispatches to the active skin.
+- **Skins** (`// ---- Skins ----` section): `SKINS` maps `retro`/`neon`/`pastel`/`pixel` to `{ label, colors, block }` — `colors` is a palette indexed 1–8 like the board, `block(context, px, py, size, color, alpha)` draws one cell. `drawBlock` sets `globalAlpha` before calling it and resets `globalAlpha`/`shadowBlur`/`shadowColor` afterwards, so skin functions may set canvas state freely. `applySkin` validates the name (unknown → `retro`) and toggles `body.skin-<name>`; CSS uses that class to override `--board-bg`/`--grid-line` (Neon forces a black board even in light theme). The choice persists under `tetris-skin`; `redrawAll()` repaints board/next/hold on change.
 - **Input**: a single `keydown` listener dispatches on `e.code` for movement/rotation/soft-drop/hard-drop; `KeyP` toggles pause independently of the `paused`/`gameOver` guard that blocks other input.
 - **Lifecycle**: `init()` resets all state and starts the loop; `spawn()` promotes `next` to `current` and generates a new `next`, calling `endGame()` if the newly spawned piece immediately collides.
 
 ### Tunable constants (top of `game.js`)
 
-`COLS`, `ROWS`, `BLOCK` (cell pixel size), `COLORS`, `LINE_SCORES`, `TSPIN_SCORES`, `PERFECT_CLEAR_SCORES`, `B2B_MULTIPLIER`, initial `dropInterval`. If `COLS`/`ROWS`/`BLOCK` change, update the `<canvas id="board">` `width`/`height` in `index.html` to match (`COLS × BLOCK` and `ROWS × BLOCK`).
+`COLS`, `ROWS`, `BLOCK` (cell pixel size), `COLORS` (the Retro skin's palette; other palettes live in `SKINS`), `LINE_SCORES`, `TSPIN_SCORES`, `PERFECT_CLEAR_SCORES`, `B2B_MULTIPLIER`, initial `dropInterval`. If `COLS`/`ROWS`/`BLOCK` change, update the `<canvas id="board">` `width`/`height` in `index.html` to match (`COLS × BLOCK` and `ROWS × BLOCK`).
 
 ## Notes
 

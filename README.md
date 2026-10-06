@@ -25,6 +25,7 @@ Implementación del clásico **Tetris** en JavaScript vanilla, usando HTML5 Canv
   - [Tecnologías](#tecnologías)
   - [Estructura del proyecto](#estructura-del-proyecto)
   - [Personalización](#personalización)
+    - [Skins](#skins)
   - [Licencia](#licencia)
 
 ---
@@ -45,6 +46,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Efectos visuales y sonoros** al encadenar: textos flotantes, destello, sacudida del tablero y sonidos sintetizados (se pueden silenciar desde el panel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Skins** visuales intercambiables en caliente (Retro, Neon, Pastel y Pixel art), compatibles con el modo claro/oscuro.
 
 ---
 
@@ -177,7 +179,8 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `COLS`         | Columnas del tablero                     | `10`                  |
 | `ROWS`         | Filas del tablero                        | `20`                  |
 | `BLOCK`        | Tamaño en píxeles de cada celda          | `30`                  |
-| `COLORS`       | Paleta de colores por tipo de pieza      | 8 colores             |
+| `COLORS`       | Paleta de la skin Retro (por tipo de pieza) | 8 colores          |
+| `SKINS`        | Skins disponibles: paleta + función de dibujo de bloque | `retro`, `neon`, `pastel`, `pixel` |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
 | `TSPIN_SCORES` | Puntos por T-spin con 0, 1, 2 o 3 líneas | `[400,800,1200,1600]` |
 | `PERFECT_CLEAR_SCORES` | Bonus por Perfect Clear según líneas | `[0,800,1200,1800,2000]` |
@@ -185,6 +188,19 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
 
 > Si cambias `COLS`, `ROWS` o `BLOCK`, recuerda ajustar también `width` y `height` del `<canvas id="board">` en `index.html` para que coincida (`COLS × BLOCK` × `ROWS × BLOCK`).
+
+### Skins
+
+En el panel lateral, debajo de **SONIDO**, el selector **SKIN** cambia la apariencia completa del juego sin recargar la página:
+
+| Skin          | Aspecto                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------- |
+| **Retro**     | Bloques cuadrados con colores planos y un brillo superior (el estilo original).            |
+| **Neon**      | Tablero negro (también en modo claro) y bloques con contorno brillante y resplandor (`shadowBlur`). |
+| **Pastel**    | Colores suaves y esquinas redondeadas simuladas con `arcTo`.                               |
+| **Pixel art** | Bisel y textura de tramado dibujados sobre cada bloque, escalados al tamaño de la celda.  |
+
+La preferencia se guarda en `localStorage` (`tetris-skin`); un valor desconocido vuelve a **Retro**. Cada entrada de `SKINS` en `game.js` define su paleta (índices 1–8 = I, O, T, S, Z, J, L, N) y una función que dibuja un bloque; `drawBlock` delega en la skin activa y restablece `globalAlpha`, `shadowBlur` y `shadowColor` tras cada bloque. El fondo y la rejilla del tablero se ajustan por skin con la clase `body.skin-<nombre>` en `style.css`. Para añadir una skin nueva basta con una entrada en `SKINS` y una `<option>` en `#skin-select`.
 
 ---
 
