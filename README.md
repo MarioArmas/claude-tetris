@@ -44,7 +44,8 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Bonus** por **T-spin**, **Back-to-Back** (Tetris o T-spins seguidos) y **Perfect Clear** (tablero vacío).
 - **Efectos visuales y sonoros** al encadenar: textos flotantes, destello, sacudida del tablero y sonidos sintetizados (se pueden silenciar desde el panel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
-- **Pausa** y **Game Over** con opción de reinicio.
+- **Menú de pausa** (`P` o `Esc`) con Reanudar, Reiniciar, Ver controles y selector de **nivel inicial** (1–15, se guarda en `localStorage` y se aplica en la próxima partida). Mientras el menú está abierto se bloquean los inputs del juego, y las teclas pulsadas en el menú se ignoran hasta soltarlas para evitar movimientos accidentales al reanudar.
+- **Game Over** con opción de reinicio.
 
 ---
 
@@ -87,7 +88,7 @@ Después abre `http://localhost:8000` en el navegador.
 | `↑` o `X` | Rotar la pieza en sentido horario |
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
-| `P`       | Pausar / reanudar                 |
+| `P` / `Esc` | Pausar / reanudar                 |
 
 ---
 
@@ -101,7 +102,7 @@ Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
-- Un overlay para los estados **PAUSA** y **GAME OVER**.
+- Un overlay de **GAME OVER** y un menú de **PAUSA** con opciones (navegable con `↑`/`↓`, `Enter` y `←`/`→` para el nivel inicial).
 
 ### 2. `style.css`
 
@@ -119,7 +120,7 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Limpieza de líneas** (`clearLines`): recorre el tablero de abajo hacia arriba; cada fila completa se elimina y se inserta una vacía en la cima.
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
 - **Combos y bonus** (`scoreLock`): cada pieza que limpia líneas incrementa `combo`, que actúa como multiplicador (la primera limpieza es x1, la segunda x2…); una pieza que no limpia nada lo reinicia. Un **T-spin** se detecta con la regla de las 3 esquinas (pieza T, último movimiento = rotación y 3 de las 4 esquinas de su caja 3×3 ocupadas) y puntúa con `TSPIN_SCORES`. Un Tetris o T-spin seguido de otro aplica **B2B** (×1.5). Si el tablero queda vacío se suma el bonus de **Perfect Clear**. Fórmula: `base × nivel × (1.5 si B2B) × combo + PerfectClear × nivel`.
-- **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
+- **Nivel y velocidad**: el nivel empieza en el nivel inicial elegido y sube cada 10 líneas (`level = nivelInicial + floor(lines / 10)`); la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
 
 ### Flujo del juego
