@@ -57,14 +57,32 @@ const fxLayer = document.getElementById('fx-layer');
 const comboSection = document.getElementById('combo-section');
 const comboEl = document.getElementById('combo');
 const b2bEl = document.getElementById('b2b-status');
+const pauseMenu = document.getElementById('pause-menu');
+const pauseMain = document.getElementById('pause-main');
+const pauseControls = document.getElementById('pause-controls');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const showControlsBtn = document.getElementById('show-controls-btn');
+const hideControlsBtn = document.getElementById('hide-controls-btn');
+const levelPicker = document.getElementById('level-picker');
+const levelDownBtn = document.getElementById('level-down');
+const levelUpBtn = document.getElementById('level-up');
+const startLevelEl = document.getElementById('start-level');
 
 const THEME_KEY = 'tetris-theme';
 const SOUND_KEY = 'tetris-sound';
+const START_LEVEL_KEY = 'tetris-start-level';
+const MAX_START_LEVEL = 15;
 
 let board, current, next, hold, holdLocked, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 // combo: piezas consecutivas que limpiaron líneas. b2b: la última limpieza fue "difícil" (Tetris o T-spin).
 // lastRotate: el último movimiento exitoso de la pieza fue una rotación (requisito del T-spin).
 let combo, b2b, lastRotate;
+// startLevel: elegido en el menú de pausa (para la próxima partida). baseLevel: con el que empezó la partida actual.
+let startLevel = clampLevel(parseInt(localStorage.getItem(START_LEVEL_KEY), 10));
+let baseLevel;
+// Teclas pulsadas con el menú abierto: se ignoran hasta soltarlas, para que no muevan la pieza al reanudar.
+const menuHeldKeys = new Set();
 let soundOn = localStorage.getItem(SOUND_KEY) !== 'off';
 let audioCtx = null;
 
@@ -206,8 +224,8 @@ function scoreLock(cleared, tspin) {
 
   score += pts;
   lines += cleared;
-  level = Math.floor(lines / 10) + 1;
-  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+  level = baseLevel + Math.floor(lines / 10);
+  dropInterval = dropIntervalFor(level);
 
   // ---- Efectos ----
   const labels = [];
@@ -473,17 +491,73 @@ function endGame() {
   overlay.classList.remove('hidden');
 }
 
+function dropIntervalFor(lvl) {
+  return Math.max(100, 1000 - (lvl - 1) * 90);
+}
+
+function clampLevel(n) {
+  return Number.isFinite(n) ? Math.min(Math.max(n, 1), MAX_START_LEVEL) : 1;
+}
+
+function setStartLevel(n) {
+  startLevel = clampLevel(n);
+  localStorage.setItem(START_LEVEL_KEY, startLevel);
+  startLevelEl.textContent = startLevel;
+}
+
+// ---- Menú de pausa ----
+
+function showPauseView(view) {
+  const controls = view === 'controls';
+  pauseMain.classList.toggle('hidden', controls);
+  pauseControls.classList.toggle('hidden', !controls);
+  (controls ? hideControlsBtn : showControlsBtn).focus();
+}
+
+function openPauseMenu() {
+  paused = true;
+  cancelAnimationFrame(animId);
+  pauseMenu.classList.remove('hidden');
+  showPauseView('main');
+  resumeBtn.focus();
+}
+
+function closePauseMenu() {
+  pauseMenu.classList.add('hidden');
+  // Sin foco en un botón del menú, Espacio/Enter no lo vuelven a activar durante la partida.
+  document.activeElement?.blur();
+  paused = false;
+  lastTime = performance.now();
+  animId = requestAnimationFrame(loop);
+}
+
 function togglePause() {
   if (gameOver) return;
-  paused = !paused;
-  if (!paused) {
-    lastTime = performance.now();
-    loop(lastTime);
-  } else {
-    cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+  if (paused) closePauseMenu();
+  else openPauseMenu();
+}
+
+// Navegación con teclado dentro del menú: ↑/↓ entre botones, ←/→ cambian el nivel inicial.
+function handleMenuKey(e) {
+  const view = pauseControls.classList.contains('hidden') ? pauseMain : pauseControls;
+  const buttons = [...view.querySelectorAll('button')];
+  const idx = buttons.indexOf(document.activeElement);
+  switch (e.code) {
+    case 'ArrowUp':
+    case 'ArrowDown': {
+      e.preventDefault();
+      const step = e.code === 'ArrowDown' ? 1 : -1;
+      const nextIdx = idx < 0 ? 0 : (idx + step + buttons.length) % buttons.length;
+      buttons[nextIdx].focus();
+      break;
+    }
+    case 'ArrowLeft':
+    case 'ArrowRight':
+      if (levelPicker.contains(document.activeElement)) {
+        e.preventDefault();
+        setStartLevel(startLevel + (e.code === 'ArrowRight' ? 1 : -1));
+      }
+      break;
   }
 }
 
@@ -509,10 +583,11 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  baseLevel = startLevel;
+  level = baseLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = dropIntervalFor(level);
   dropAccum = 0;
   lastTime = performance.now();
   hold = null;
@@ -527,14 +602,28 @@ function init() {
   drawHold();
   updateHUD();
   overlay.classList.add('hidden');
+  pauseMenu.classList.add('hidden');
+  document.activeElement?.blur();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
   unlockAudio();
-  if (e.code === 'KeyP') { togglePause(); return; }
-  if (paused || gameOver) return;
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (e.repeat) return;
+    // Esc en la lista de controles vuelve al menú principal en vez de reanudar.
+    if (e.code === 'Escape' && paused && !pauseControls.classList.contains('hidden')) showPauseView('main');
+    else togglePause();
+    return;
+  }
+  if (paused) {
+    menuHeldKeys.add(e.code);
+    handleMenuKey(e);
+    return;
+  }
+  if (gameOver) return;
+  if (menuHeldKeys.has(e.code)) { e.preventDefault(); return; }
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) { current.x--; lastRotate = false; }
@@ -562,7 +651,21 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
+document.addEventListener('keyup', e => menuHeldKeys.delete(e.code));
+// Si la ventana pierde el foco no llegará el keyup; se desbloquea todo.
+window.addEventListener('blur', () => menuHeldKeys.clear());
+
 restartBtn.addEventListener('click', init);
+resumeBtn.addEventListener('click', closePauseMenu);
+pauseRestartBtn.addEventListener('click', init);
+showControlsBtn.addEventListener('click', () => showPauseView('controls'));
+hideControlsBtn.addEventListener('click', () => showPauseView('main'));
+levelDownBtn.addEventListener('click', () => setStartLevel(startLevel - 1));
+levelUpBtn.addEventListener('click', () => setStartLevel(startLevel + 1));
+
+// La lista de controles del menú se copia del panel lateral para no duplicarla.
+document.getElementById('menu-controls').appendChild(document.querySelector('.controls ul').cloneNode(true));
+startLevelEl.textContent = startLevel;
 
 loadTheme();
 init();
