@@ -36,7 +36,9 @@ All game logic lives in `game.js` as top-level functions and module-scope mutabl
 - **Ghost piece** (`ghostY`): projects the current piece straight down until it would collide, drawn at low alpha in `draw()`.
 - **Rendering**: `draw()` redraws the whole canvas every frame (grid, locked board, ghost, current piece); `drawNext()` renders the next-piece preview canvas.
 - **Input**: a single `keydown` listener dispatches on `e.code` for movement/rotation/soft-drop/hard-drop; `KeyP` toggles pause independently of the `paused`/`gameOver` guard that blocks other input.
-- **Lifecycle**: `init()` resets all state and starts the loop; `spawn()` promotes `next` to `current` and generates a new `next`, calling `endGame()` if the newly spawned piece immediately collides.
+- **Lifecycle**: on load `showStartScreen()` shows an empty board (`current = null`, `gameOver = true` to block input; `draw()` skips the piece when `current` is null) under the start overlay. `startGame()` (Jugar/Reiniciar button or Enter) saves any pending record, then `init()` resets all state and starts the loop; `spawn()` promotes `next` to `current` and generates a new `next`, calling `endGame()` if the newly spawned piece immediately collides.
+- **Overlay**: a single `#overlay` serves three modes via `showOverlay(mode, …)` → `data-mode="start" | "pause" | "gameover"`; CSS hides the records section in pause.
+- **Records** (`localStorage` key `tetris-records` = `{ top, bestCombo, maxLines }`, max `MAX_RECORDS` entries sorted by score): `endGame` → `recordGame()` updates the global bests (`maxCombo` is tracked per game in `scoreLock`) and, if `recordRank(score) !== -1`, sets `pendingRecord`. `renderRecords()` inserts the pending entry in its row with the shared `nameInput` element; `savePendingRecord()` commits it (Enter in the input, or on restart). `nameInput`'s keydown calls `stopPropagation` so typing never reaches the game listener.
 
 ### Tunable constants (top of `game.js`)
 

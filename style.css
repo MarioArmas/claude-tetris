@@ -30,6 +30,8 @@
   --combo-color: #ffb74d;
   --combo-glow: rgba(255, 183, 77, 0.45);
   --flash-color: rgba(255, 255, 255, 0.35);
+  --table-border: #2a2a3a;
+  --secondary-btn-text: #888;
 }
 
 body.light-theme {
@@ -58,6 +60,8 @@ body.light-theme {
   --combo-color: #e07b00;
   --combo-glow: rgba(224, 123, 0, 0.35);
   --flash-color: rgba(59, 91, 219, 0.18);
+  --table-border: #d8d8e6;
+  --secondary-btn-text: #55556b;
 }
 
 body {
@@ -285,6 +289,152 @@ kbd {
 
 #restart-btn:hover {
   background: var(--restart-hover);
+}
+
+.overlay-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.secondary-btn {
+  background: none;
+  border: 1px solid var(--board-border);
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--secondary-btn-text);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.secondary-btn:hover {
+  color: var(--overlay-title-color);
+  border-color: var(--overlay-title-color);
+}
+
+/* ---- Tabla de records ---- */
+/* La pausa no muestra records; el borrado solo está en inicio y game over. */
+.overlay[data-mode="pause"] .records,
+.overlay[data-mode="pause"] .new-record,
+.overlay[data-mode="pause"] #reset-records-btn {
+  display: none;
+}
+
+.overlay[data-mode="start"] #overlay-title {
+  color: var(--title-color);
+}
+
+.new-record {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--combo-color);
+  text-shadow: 0 0 12px var(--combo-glow);
+  animation: combo-pulse 0.4s ease-out;
+}
+
+.new-record:empty {
+  display: none;
+}
+
+.records {
+  width: 290px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.records-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.records-table th {
+  font-size: 9px;
+  letter-spacing: 1px;
+  font-weight: 600;
+  color: var(--label-color);
+  padding: 4px;
+  border-bottom: 1px solid var(--table-border);
+}
+
+.records-table td {
+  padding: 5px 4px;
+  border-bottom: 1px solid var(--table-border);
+  color: var(--text);
+}
+
+.records-table th:nth-child(2),
+.records-table td:nth-child(2) {
+  text-align: left;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.records-table td:nth-child(3),
+.records-table td:nth-child(4) {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  text-align: right;
+  color: var(--value-color);
+}
+
+.records-table tr.empty td {
+  color: var(--label-color);
+}
+
+.records-table tr.highlight td {
+  background: var(--combo-glow);
+  color: var(--combo-color);
+  font-weight: 700;
+}
+
+.records-table input {
+  width: 100%;
+  background: var(--board-bg);
+  border: 1px solid var(--combo-color);
+  border-radius: 3px;
+  padding: 2px 4px;
+  font: inherit;
+  color: var(--text);
+  outline: none;
+  user-select: text;
+}
+
+.records-stats {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 6px;
+}
+
+.records-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.stat-value {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--value-color);
+}
+
+.records-stat.new .stat-value {
+  color: var(--combo-color);
+  text-shadow: 0 0 10px var(--combo-glow);
+}
+
+.records-stat.new .label::after {
+  content: ' ¡NUEVO!';
+  color: var(--combo-color);
 }
 
 /* ---- Combos y efectos ---- */
