@@ -45,7 +45,8 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Efectos visuales y sonoros** al encadenar: textos flotantes, destello, sacudida del tablero y sonidos sintetizados (se pueden silenciar desde el panel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Menú de pausa** (`P` o `Esc`) con Reanudar, Reiniciar, Ver controles y selector de **nivel inicial** (1–15, se guarda en `localStorage` y se aplica en la próxima partida). Mientras el menú está abierto se bloquean los inputs del juego, y las teclas pulsadas en el menú se ignoran hasta soltarlas para evitar movimientos accidentales al reanudar.
-- **Game Over** con opción de reinicio.
+- **Pantalla de inicio** y **Game Over** con opción de reinicio.
+- **Tabla de records local** (`localStorage`): top 5 puntuaciones con nombre del jugador, mejor combo y máximo de líneas en una partida. Se muestra en la pantalla de inicio y al terminar la partida, resalta cuando entras al top y tiene un botón para borrar los records.
 
 ---
 
@@ -89,6 +90,7 @@ Después abre `http://localhost:8000` en el navegador.
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
 | `P` / `Esc` | Pausar / reanudar                 |
+| `Enter`   | Empezar / reiniciar desde el menú (en el campo de nombre: guardar el record) |
 
 ---
 
@@ -102,7 +104,8 @@ Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
-- Un overlay de **GAME OVER** y un menú de **PAUSA** con opciones (navegable con `↑`/`↓`, `Enter` y `←`/`→` para el nivel inicial).
+- Un overlay para la **pantalla de inicio** y el **GAME OVER**, con la tabla de records.
+- Un menú de **PAUSA** con opciones (navegable con `↑`/`↓`, `Enter` y `←`/`→` para el nivel inicial).
 
 ### 2. `style.css`
 
@@ -122,11 +125,14 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Combos y bonus** (`scoreLock`): cada pieza que limpia líneas incrementa `combo`, que actúa como multiplicador (la primera limpieza es x1, la segunda x2…); una pieza que no limpia nada lo reinicia. Un **T-spin** se detecta con la regla de las 3 esquinas (pieza T, último movimiento = rotación y 3 de las 4 esquinas de su caja 3×3 ocupadas) y puntúa con `TSPIN_SCORES`. Un Tetris o T-spin seguido de otro aplica **B2B** (×1.5). Si el tablero queda vacío se suma el bonus de **Perfect Clear**. Fórmula: `base × nivel × (1.5 si B2B) × combo + PerfectClear × nivel`.
 - **Nivel y velocidad**: el nivel empieza en el nivel inicial elegido y sube cada 10 líneas (`level = nivelInicial + floor(lines / 10)`); la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
+- **Records** (`recordGame`, `savePendingRecord`, `renderRecords`): se guardan en `localStorage` bajo la clave `tetris-records` como `{ top, bestCombo, maxLines }`. Al terminar la partida, `recordGame` actualiza el mejor combo y las líneas máximas, y si la puntuación entra al top 5 (`recordRank`) la deja pendiente con un campo de nombre insertado en su fila. El nombre se guarda con `Enter` o al pulsar Reiniciar (vacío → `ANÓNIMO`); el último nombre usado se recuerda en `tetris-player`.
 
 ### Flujo del juego
 
 ```
-init()
+showStartScreen()                   → tablero vacío + overlay con records
+  ↓ (Jugar / Enter)
+startGame() → init()
   ├─ createBoard()                  → matriz vacía
   ├─ next = randomPiece()
   ├─ spawn()                        → mueve next a current y genera nueva next
@@ -141,7 +147,7 @@ init()
    keydown → mover / rotar / soft-drop / hard-drop / pausa
 ```
 
-Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over**.
+Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()`, que registra la partida en los records y muestra el overlay de **Game Over**.
 
 ---
 

@@ -81,7 +81,32 @@
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
-        <button id="restart-btn">Reiniciar</button>
+        <p id="new-record" class="new-record"></p>
+
+        <div class="records">
+          <span class="label">RECORDS</span>
+          <table class="records-table">
+            <thead>
+              <tr><th>#</th><th>NOMBRE</th><th>PUNTOS</th><th>LÍNEAS</th></tr>
+            </thead>
+            <tbody id="records-body"></tbody>
+          </table>
+          <div class="records-stats">
+            <div class="records-stat" id="best-combo-stat">
+              <span class="label">MEJOR COMBO</span>
+              <span class="stat-value" id="best-combo">—</span>
+            </div>
+            <div class="records-stat" id="max-lines-stat">
+              <span class="label">MÁX. LÍNEAS</span>
+              <span class="stat-value" id="max-lines">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="overlay-actions">
+          <button id="restart-btn">Reiniciar</button>
+          <button id="reset-records-btn" class="secondary-btn">Borrar records</button>
+        </div>
       </div>
     </div>
 
