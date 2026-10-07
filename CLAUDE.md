@@ -35,6 +35,7 @@ All game logic lives in `game.js` as top-level functions and module-scope mutabl
 - **Effects**: `showFx` (floating text in `#fx-layer` over the board), `retrigger` (restart CSS `flash`/`shake` animations on `#board-wrap`), and `playSound` (Web Audio synthesized tones; `AudioContext` is created in `unlockAudio` from the keydown listener due to autoplay policy).
 - **Ghost piece** (`ghostY`): projects the current piece straight down until it would collide, drawn at low alpha in `draw()`.
 - **Rendering**: `draw()` redraws the whole canvas every frame (grid, locked board, ghost, current piece); `drawNext()` renders the next-piece preview canvas.
+- **Skins**: `SKINS` maps a skin name (`retro`, `neon`, `pastel`, `pixel`) to its 8-color palette and a block painter (`drawRetroBlock`, etc.). `drawBlock` delegates to the active `skin`; `applySkin` also toggles a `skin-<name>` class on `<body>` so `style.css` can restyle the board background/grid. The choice is saved in `localStorage` (`tetris-skin`) and switches live via `#skin-select`. `COLORS` is the Retro palette.
 - **Input**: a single `keydown` listener dispatches on `e.code` for movement/rotation/soft-drop/hard-drop; `KeyP` toggles pause independently of the `paused`/`gameOver` guard that blocks other input.
 - **Lifecycle**: `init()` resets all state and starts the loop; `spawn()` promotes `next` to `current` and generates a new `next`, calling `endGame()` if the newly spawned piece immediately collides.
 

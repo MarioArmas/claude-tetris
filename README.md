@@ -43,6 +43,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Combos encadenados**: limpiar líneas con piezas consecutivas multiplica la puntuación (x2, x3, x4…).
 - **Bonus** por **T-spin**, **Back-to-Back** (Tetris o T-spins seguidos) y **Perfect Clear** (tablero vacío).
 - **Efectos visuales y sonoros** al encadenar: textos flotantes, destello, sacudida del tablero y sonidos sintetizados (se pueden silenciar desde el panel).
+- **Skins** seleccionables desde el panel: **Retro**, **Neon** (fondo negro con brillo), **Pastel** (colores suaves y bordes redondeados) y **Pixel art** (textura pixelada). La preferencia se guarda en el navegador.
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
 
